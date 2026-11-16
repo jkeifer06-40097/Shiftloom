@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Build a weekly staff schedule around your team's availability and coverage needs.">
+<title>Shiftloom | Staff Scheduling</title>
+<link rel="stylesheet" href="style.css?v=5">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <button data-route="schedule" class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Shiftloom</button>
+    <nav aria-label="Workspace">
+      <button data-view="schedule" class="selected" aria-current="page">Schedule</button>
+      <button data-view="team">Team</button>
+      <button data-view="insights">Analysis</button>
+      <button data-view="shifts">Shifts &amp; rules</button>
+    </nav>
+    <div class="top-actions"><button class="quiet" id="demo">Load sample data</button></div>
+  </div>
+</header>
+<main>
+  <section id="schedule">
+    <div class="heading">
+      <div><h1>Weekly schedule</h1><p>Assign staff to shifts and review coverage for the week.</p></div>
+      <button class="primary" id="generate">Generate schedule</button>
+    </div>
+    <div id="metrics" class="metrics" aria-label="Schedule summary"></div>
+    <div class="panel roster">
+      <div class="panel-head">
+        <div><h2>Roster</h2><p id="status" aria-live="polite"></p></div>
+        <button id="export" class="outline">Export CSV</button>
+      </div>
+      <div id="calendar" class="calendar"></div>
+    </div>
+  </section>
+  <section id="team" hidden>
+    <div class="heading">
+      <div><h1>Team</h1><p>Manage staff roles, weekly hour limits, and availability.</p></div>
+      <button id="add-person" class="primary">Add team member</button>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Staff members</h2></div><div id="people" class="records"></div></div>
+  </section>
+  <section id="shifts" hidden>
+    <div class="heading">
+      <div><h1>Shifts &amp; rules</h1><p>Set recurring shifts and staffing requirements for the week.</p></div>
+      <button id="add-shift" class="primary">Add shift</button>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Shift templates</h2></div><div id="templates" class="records"></div></div>
+    <div class="panel rules">
+      <h2>Scheduling rules</h2>
+      <label>Maximum consecutive workdays <input type="number" id="streak" min="1" max="7" required></label>
+      <p>Multiple shifts on the same day count as one workday. The limit applies within this Monday–Sunday roster.</p>
+    </div>
+  </section>
+  <section id="insights" hidden>
+    <div class="heading"><div><h1>Schedule analysis</h1><p>Review coverage, test labor spending, and plan for call-outs.</p></div></div>
+    <p id="analysis-empty" class="panel rules" hidden>Generate a schedule to start the analysis.</p>
+    <div id="analysis-tools" class="analysis-tools">
+      <div class="panel analysis-panel">
+        <div class="panel-head"><div><h2>Weekly manager brief</h2><p>Coverage and the shifts that need attention.</p></div></div>
+        <div class="analysis-body"><div id="brief-output" aria-live="polite"></div>
+          <div id="ai-controls" hidden><button class="outline" id="ai-generate">Write AI brief</button><p id="ai-status" aria-live="polite"></p><p id="ai-copy"></p></div>
+        </div>
+      </div>
+      <div class="panel analysis-panel">
+        <div class="panel-head"><div><h2>Labor cost and profit simulator</h2><p>Compare the current roster with one more position per occurrence of a shift.</p></div></div>
+        <div class="analysis-body">
+          <form id="labor-form"><div class="analysis-fields">
+            <label>Shift template <select name="template" id="labor-template" required></select></label>
+            <label>Historical demand CSV <input id="demand-file" type="file" accept=".csv,text/csv"></label>
+            <label>Labor cost per hour ($) <input name="wage" type="number" min="0" max="10000" step="0.01" value="18" required></label>
+            <label>Contribution per order ($) <input name="margin" type="number" min="0" max="10000" step="0.01" value="6" required></label>
+            <label>Orders per staff-hour <input name="productivity" type="number" min="0.1" max="1000" step="0.1" value="17" required></label>
+            <label>Scenario seed <input name="seed" type="number" min="0" max="4294967295" value="327321" required></label>
+            <label>Maximum weeks with unmet demand (%) <input name="riskLimit" type="number" min="0" max="100" step="0.1" value="30" required></label>
+            <label class="check-field"><span><input name="antithetic" type="checkbox"> Use antithetic scenario pairs</span></label>
+          </div>
+          <p id="demand-source" class="model-note" aria-live="polite">SYNTHETIC historical demand · fictional café.</p>
+          <p class="model-note">CSV columns: date, shift, demand. Use YYYY-MM-DD and the exact shift template name. Provide at least nine consecutive complete weeks for scheduled days. Enter zero explicitly.</p>
+          <p class="model-note">Labor results cover only the selected shift, before fixed costs. The forecast is for the week after the last observation.</p>
+          <button type="button" id="synthetic-demand" class="outline" hidden>Use SYNTHETIC history</button>
+          <div class="actions analysis-actions"><button class="primary" type="submit">Run simulation</button>
+            <button class="outline" type="submit" value="optimize">Optimize staffing risk</button>
+            <button class="outline" type="submit" value="benchmark">Benchmark solver</button></div></form>
+          <div id="labor-output" class="analysis-output" aria-live="polite"></div>
+          <div id="risk-output" class="analysis-output" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="panel analysis-panel">
+        <div class="panel-head"><div><h2>Call-out stress test</h2><p>Test a missed shift or scan every scheduled employee for a full-week absence.</p></div></div>
+        <div class="analysis-body"><form id="callout-form">
+          <div class="analysis-fields"><label>Employee <select id="callout-person" required></select></label>
+          <label>Absence <select id="callout-day"></select></label></div>
+          <div class="actions analysis-actions"><button class="primary" type="submit">Test absence</button><button class="outline" type="button" id="scan">Scan full-week absences</button></div>
+        </form><div id="callout-output" class="analysis-output" aria-live="polite"></div></div>
+      </div>
+    </div>
+  </section>
+  <footer><span>Schedule data is stored in this browser.</span><a href="shiftloom-source.zip" download>Download source</a></footer>
+</main>
+<dialog id="editor" aria-labelledby="editor-title"><form id="edit-form"></form></dialog>
+<script type="module" src="app.js?v=5"></script>
+</body>
+</html>
